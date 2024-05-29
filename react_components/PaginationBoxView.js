@@ -11,7 +11,7 @@ export default class PaginationBoxView extends Component {
     pageCount: PropTypes.number.isRequired,
     pageRangeDisplayed: PropTypes.number,
     marginPagesDisplayed: PropTypes.number,
-    previousLabel: PropTypes.node,
+    previousLabel: PropTypes.node, 
     previousAriaLabel: PropTypes.string,
     prevPageRel: PropTypes.string,
     prevRel: PropTypes.string,
@@ -19,6 +19,8 @@ export default class PaginationBoxView extends Component {
     nextAriaLabel: PropTypes.string,
     nextPageRel: PropTypes.string,
     nextRel: PropTypes.string,
+    
+    
     breakLabel: PropTypes.oneOfType([PropTypes.string, PropTypes.node]),
     breakAriaLabels: PropTypes.shape({
       forward: PropTypes.string,
@@ -52,18 +54,19 @@ export default class PaginationBoxView extends Component {
     eventListener: PropTypes.string,
     renderOnZeroPageCount: PropTypes.func,
     selectedPageRel: PropTypes.string,
+    
   };
 
   static defaultProps = {
     pageRangeDisplayed: 2,
-    marginPagesDisplayed: 3,
+    marginPagesDisplayed: 5,
     activeClassName: 'selected',
-    previousLabel: 'Previous',
+    previousLabel: '<',
     previousClassName: 'previous',
     previousAriaLabel: 'Previous page',
     prevPageRel: 'prev',
     prevRel: 'prev',
-    nextLabel: 'Next',
+    nextLabel: '>',
     nextClassName: 'next',
     nextAriaLabel: 'Next page',
     nextPageRel: 'next',
@@ -77,6 +80,7 @@ export default class PaginationBoxView extends Component {
     renderOnZeroPageCount: undefined,
     selectedPageRel: 'canonical',
     hrefAllControls: false,
+    
   };
 
   constructor(props) {
@@ -191,6 +195,8 @@ export default class PaginationBoxView extends Component {
     );
   };
 
+  
+
   handlePageSelected = (selected, event) => {
     if (this.state.selected === selected) {
       this.callActiveCallback(selected);
@@ -220,17 +226,17 @@ export default class PaginationBoxView extends Component {
 
   getForwardJump() {
     const { selected } = this.state;
-    const { pageCount, pageRangeDisplayed } = this.props;
+    const { pageCount, marginPagesDisplayed } = this.props;
 
-    const forwardJump = selected + pageRangeDisplayed;
+    const forwardJump = selected + marginPagesDisplayed;
     return forwardJump >= pageCount ? pageCount - 1 : forwardJump;
   }
 
   getBackwardJump() {
     const { selected } = this.state;
-    const { pageRangeDisplayed } = this.props;
+    const { marginPagesDisplayed } = this.props;
 
-    const backwardJump = selected - pageRangeDisplayed;
+    const backwardJump = selected - marginPagesDisplayed;
     return backwardJump < 0 ? 0 : backwardJump;
   }
 
@@ -243,6 +249,8 @@ export default class PaginationBoxView extends Component {
       isNext = false,
       isBreak = false,
       isActive = false,
+      isFirst = false,
+      isLast = false
     } = {}
   ) => {
     event.preventDefault ? event.preventDefault() : (event.returnValue = false);
@@ -261,6 +269,8 @@ export default class PaginationBoxView extends Component {
         isNext,
         isBreak,
         isActive,
+        isFirst,
+        isLast
       });
       if (onClickReturn === false) {
         // We abord standard behavior and let parent handle
@@ -417,81 +427,86 @@ export default class PaginationBoxView extends Component {
 
       // First pass: process the pages or breaks to display (or not).
       const pagesBreaking = [];
+      marginPagesDisplayed < 3 ? 3: marginPagesDisplayed;
+
+      let maxPageDisplay = marginPagesDisplayed + 2;
+      let rightBreakStart = marginPagesDisplayed + 1;
+      let rightBreakEnd = pageCount - 1;
+      let leftBreakStart = 2;
+      let leftBreakEnd = selected - (marginPagesDisplayed-3);
+      let disableBreaks = false;
+      let withLeftBreak = false;
+      let withRightBreak = false;
+
+
+      if (pageCount <= maxPageDisplay) {
+        disableBreaks = true;
+      }
+
+      if (selected+1<=marginPagesDisplayed) {
+        leftBreakEnd=0;
+      }
+
+      if ((pageCount-selected+marginPagesDisplayed) <= maxPageDisplay) {
+        rightBreakEnd=0;
+        let rem = (selected+1) % marginPagesDisplayed;
+        //leftBreakEnd = (Math.floor((selected+1) / marginPagesDisplayed))+rem;
+        selected !== pageCount-1 ? leftBreakEnd-- : leftBreakEnd-=2;
+      }
+
       for (index = 0; index < pageCount; index++) {
         const page = index + 1;
-
-        // If the page index is lower than the margin defined,
-        // the page has to be displayed on the left side of
-        // the pagination.
-        if (page <= marginPagesDisplayed) {
+     
+        // If the page index the first or last page
+        if (page === pageCount || page === 1) {
           pagesBreaking.push({
             type: 'page',
             index,
             display: createPageView(index),
           });
-          continue;
-        }
-
-        // If the page index is greater than the page count
-        // minus the margin defined, the page has to be
-        // displayed on the right side of the pagination.
-        if (page > pageCount - marginPagesDisplayed) {
+                    
+        } else if (!disableBreaks && (leftBreakEnd>2) && page >= leftBreakStart && page <= leftBreakEnd) {
+          // If the page index is included in the left break
+          if (!withLeftBreak) {
+            breakView = (
+              <BreakView
+                key={index}
+                breakAriaLabel={breakAriaLabels.backward}
+                breakLabel={breakLabel}
+                breakClassName={breakClassName}
+                breakLinkClassName={breakLinkClassName}
+                breakHandler={this.handleBreakClick.bind(null, index)}
+                getEventListener={this.getEventListener}
+              />
+            );
+            pagesBreaking.push({ type: 'break', index, display: breakView });
+            withLeftBreak=true;
+            rightBreakStart = selected + 2;
+          }
+        } else if (!disableBreaks && (rightBreakEnd>2) && page >= rightBreakStart && page <= rightBreakEnd) {
+          // If the page index is included in the right break
+          if (!withRightBreak) {
+            breakView = (
+              <BreakView
+                key={index}
+                breakAriaLabel={breakAriaLabels.forward}
+                breakLabel={breakLabel}
+                breakClassName={breakClassName}
+                breakLinkClassName={breakLinkClassName}
+                breakHandler={this.handleBreakClick.bind(null, index)}
+                getEventListener={this.getEventListener}
+              />
+            );
+            pagesBreaking.push({ type: 'break', index, display: breakView });
+            withRightBreak = true;
+          }
+        } else {
+          //other pages
           pagesBreaking.push({
             type: 'page',
             index,
             display: createPageView(index),
           });
-          continue;
-        }
-
-        // If it is the first element of the array the rightSide need to be adjusted,
-        //  otherwise an extra element will be rendered
-        const adjustedRightSide =
-          selected === 0 && pageRangeDisplayed > 1 ? rightSide - 1 : rightSide;
-
-        // If the page index is near the selected page index
-        // and inside the defined range (pageRangeDisplayed)
-        // we have to display it (it will create the center
-        // part of the pagination).
-        if (
-          index >= selected - leftSide &&
-          index <= selected + adjustedRightSide
-        ) {
-          pagesBreaking.push({
-            type: 'page',
-            index,
-            display: createPageView(index),
-          });
-          continue;
-        }
-
-        // If the page index doesn't meet any of the conditions above,
-        // we check if the last item of the current "items" array
-        // is a break element. If not, we add a break element, else,
-        // we do nothing (because we don't want to display the page).
-        if (
-          breakLabel &&
-          pagesBreaking.length > 0 &&
-          pagesBreaking[pagesBreaking.length - 1].display !== breakView &&
-          // We do not show break if only one active page is displayed.
-          (pageRangeDisplayed > 0 || marginPagesDisplayed > 0)
-        ) {
-          const useBreakAriaLabel =
-            index < selected
-              ? breakAriaLabels.backward
-              : breakAriaLabels.forward;
-          breakView = (
-            <BreakView
-              key={index}
-              breakAriaLabel={useBreakAriaLabel}
-              breakLabel={breakLabel}
-              breakClassName={breakClassName}
-              breakLinkClassName={breakLinkClassName}
-              breakHandler={this.handleBreakClick.bind(null, index)}
-              getEventListener={this.getEventListener}
-            />
-          );
-          pagesBreaking.push({ type: 'break', index, display: breakView });
         }
       }
       // Second pass: we remove breaks containing one page to the actual page.
@@ -546,13 +561,15 @@ export default class PaginationBoxView extends Component {
       nextClassName,
       nextLinkClassName,
       nextAriaLabel,
-      nextRel,
+      nextRel,      
     } = this.props;
 
     const { selected } = this.state;
 
+    const isFirstDisabled = selected === 0;
     const isPreviousDisabled = selected === 0;
-    const isNextDisabled = selected === pageCount - 1;
+    const isNextDisabled = selected === pageCount - 1;    
+    const isLastDisabled = selected === pageCount - 1;
 
     const previousClasses = `${classNameIfDefined(previousClassName)}${
       isPreviousDisabled ? ` ${classNameIfDefined(disabledClassName)}` : ''
@@ -560,23 +577,23 @@ export default class PaginationBoxView extends Component {
     const nextClasses = `${classNameIfDefined(nextClassName)}${
       isNextDisabled ? ` ${classNameIfDefined(disabledClassName)}` : ''
     }`;
-
-    const previousLinkClasses = `${classNameIfDefined(previousLinkClassName)}${
+        const previousLinkClasses = `${classNameIfDefined(previousLinkClassName)}${
       isPreviousDisabled ? ` ${classNameIfDefined(disabledLinkClassName)}` : ''
     }`;
     const nextLinkClasses = `${classNameIfDefined(nextLinkClassName)}${
       isNextDisabled ? ` ${classNameIfDefined(disabledLinkClassName)}` : ''
     }`;
+    
 
     const previousAriaDisabled = isPreviousDisabled ? 'true' : 'false';
     const nextAriaDisabled = isNextDisabled ? 'true' : 'false';
-
+    
     return (
       <ul
         className={className || containerClassName}
         role="navigation"
         aria-label="Pagination"
-      >
+      >        
         <li className={previousClasses}>
           <a
             className={previousLinkClasses}
