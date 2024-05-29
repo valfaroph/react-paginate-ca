@@ -1,7 +1,7 @@
 {
-  "name": "react-paginate",
-  "version": "8.2.0",
-  "description": "A ReactJS component that creates a pagination.",
+  "name": "react-paginate-ca",
+  "version": "1.0.0",
+  "description": "A ReactJS component that creates a pagination. Forked from react-paginate",
   "main": "./dist/react-paginate.js",
   "repository": {
     "type": "git",
